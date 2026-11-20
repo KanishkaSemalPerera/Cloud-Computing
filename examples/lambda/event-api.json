@@ -1,0 +1,7 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /hello",
+  "rawPath": "/hello",
+  "queryStringParameters": { "name": "Kanishka" },
+  "requestContext": { "http": { "method": "GET", "path": "/hello" } }
+}

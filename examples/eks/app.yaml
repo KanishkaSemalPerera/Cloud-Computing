@@ -1,0 +1,65 @@
+# kubectl apply -f app.yaml
+# kubectl get pods,svc -n lesson
+# The LoadBalancer Service gets an AWS load balancer; open its EXTERNAL-IP / hostname.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lesson
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: lesson
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web }
+    spec:
+      containers:
+        - name: web
+          image: public.ecr.aws/nginx/nginx:1.27
+          ports:
+            - containerPort: 80
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits:   { cpu: 250m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: lesson
+spec:
+  type: LoadBalancer
+  selector: { app: web }
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web
+  namespace: lesson
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }

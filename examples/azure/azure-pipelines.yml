@@ -1,0 +1,47 @@
+# Azure DevOps pipeline: build a Docker image, push to Azure Container Registry,
+# deploy to AKS. Create the service connections in Project Settings first.
+trigger:
+  branches:
+    include: [main]
+
+variables:
+  dockerRegistryServiceConnection: "acr-connection"     # Docker registry service connection name
+  imageRepository: "lesson-web"
+  containerRegistry: "lessonacr.azurecr.io"
+  tag: "$(Build.BuildId)"
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            displayName: Build and push image
+            inputs:
+              command: buildAndPush
+              repository: $(imageRepository)
+              dockerfile: Dockerfile
+              containerRegistry: $(dockerRegistryServiceConnection)
+              tags: |
+                $(tag)
+          - publish: manifests
+            artifact: manifests
+
+  - stage: Deploy
+    dependsOn: Build
+    jobs:
+      - deployment: DeployToAKS
+        environment: "lesson-dev.lesson"        # <environment>.<k8s namespace>
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: KubernetesManifest@1
+                  inputs:
+                    action: deploy
+                    manifests: $(Pipeline.Workspace)/manifests/app.yaml
+                    containers: $(containerRegistry)/$(imageRepository):$(tag)

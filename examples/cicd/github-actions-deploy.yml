@@ -1,0 +1,60 @@
+# Copy to .github/workflows/deploy.yml in your app repo.
+# GitHub Actions -> AWS with OIDC (NO long-lived access keys stored in GitHub).
+# One-time setup:
+#   1. IAM -> Identity providers -> add token.actions.githubusercontent.com (audience sts.amazonaws.com)
+#   2. Create role "github-deploy" with trust policy ../iam/github-oidc-trust-policy.json
+#   3. Give that role only the permissions the deploy needs (ECR push, ECS update-service).
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write   # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-2
+  ECR_REPO: lesson-web
+  CLUSTER: lesson-cluster
+  SERVICE: lesson-web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push image
+        run: |
+          IMAGE=${{ steps.ecr.outputs.registry }}/$ECR_REPO:${{ github.sha }}
+          docker build -t $IMAGE .
+          docker push $IMAGE
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Render task definition with new image
+        id: taskdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: examples/ecs/task-definition.json
+          container-name: web
+          image: ${{ env.IMAGE }}
+
+      - name: Deploy to ECS (rolling update, waits for healthy)
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.taskdef.outputs.task-definition }}
+          cluster: ${{ env.CLUSTER }}
+          service: ${{ env.SERVICE }}
+          wait-for-service-stability: true

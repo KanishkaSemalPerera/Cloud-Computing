@@ -1,0 +1,25 @@
+# eksctl cluster config - creates VPC, control plane and a managed node group.
+#   eksctl create cluster -f cluster.yaml      (~15-20 min)
+#   eksctl delete cluster -f cluster.yaml      (ALWAYS delete when done - EKS costs ~$0.10/h + nodes)
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: lesson-eks
+  region: ap-southeast-2
+  version: "1.31"
+
+iam:
+  withOIDC: true          # needed for IRSA (IAM roles for service accounts)
+
+managedNodeGroups:
+  - name: ng-general
+    instanceType: t3.medium
+    minSize: 1
+    desiredCapacity: 2
+    maxSize: 3
+    volumeSize: 20
+    privateNetworking: true
+    labels: { role: general }
+    tags:
+      Project: cloud-lessons

@@ -1,0 +1,12 @@
+{
+  "Records": [
+    {
+      "eventSource": "aws:s3",
+      "eventName": "ObjectCreated:Put",
+      "s3": {
+        "bucket": { "name": "my-upload-bucket" },
+        "object": { "key": "images/cat.png", "size": 1024 }
+      }
+    }
+  ]
+}

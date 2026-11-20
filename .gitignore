@@ -1,0 +1,32 @@
+# --- AI assistant / editor local files (never commit) ---
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+.vscode/
+.idea/
+
+# --- Secrets & credentials ---
+.env
+.env.*
+*.pem
+*.key
+credentials
+credentials.json
+.aws/
+
+# --- Terraform ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+terraform.tfvars
+
+# --- Build / runtime junk ---
+__pycache__/
+*.pyc
+function.zip
+out.json
+node_modules/
+.DS_Store
+Thumbs.db
